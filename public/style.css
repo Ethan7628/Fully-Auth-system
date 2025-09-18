@@ -175,18 +175,34 @@
             border-bottom: none;
         }
         
+
         .user-info {
             display: flex;
             flex-direction: column;
         }
-        
+
         .user-email {
             font-weight: 500;
         }
-        
+
+        .user-role {
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+            margin-top: 2px;
+        }
+
         .user-status {
             font-size: 0.85rem;
             margin-top: 5px;
+        }
+
+        .user-info-panel {
+            background: #f1f3f6;
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-top: 10px;
+            color: var(--dark-color);
+            font-size: 1rem;
         }
         
         .verified {

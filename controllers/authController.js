@@ -11,11 +11,13 @@ const generateOTP = () => {
 // Signup endpoint
 const signup = async (req, res) => {
   try {
-    const { email, password } = req.body;
+  const { email, password, role } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
+    // Default role to 'staf' if not provided or invalid
+    const userRole = (role === 'admin' || role === 'staf') ? role : 'staf';
 
     const checkEmailQuery = 'SELECT id FROM users WHERE email = ?';
     db.query(checkEmailQuery, [email], async (err, results) => {
@@ -34,11 +36,11 @@ const signup = async (req, res) => {
 
       // Inserting new users
       const insertQuery = `
-        INSERT INTO users (email, password, otp, is_verified) 
-        VALUES (?, ?, ?, FALSE)
+        INSERT INTO users (email, password, role, otp, is_verified) 
+        VALUES (?, ?, ?, ?, FALSE)
       `;
 
-      db.query(insertQuery, [email, hashedPassword, otp], async (err, results) => {
+      db.query(insertQuery, [email, hashedPassword, userRole, otp], async (err, results) => {
         if (err) {
           console.error('Database error:', err);
           return res.status(500).json({ message: 'Internal server error' });
@@ -119,7 +121,7 @@ const login = (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const loginQuery = 'SELECT id, email, password, is_verified FROM users WHERE email = ?';
+  const loginQuery = 'SELECT id, email, password, is_verified, role FROM users WHERE email = ?';
     db.query(loginQuery, [email], async (err, results) => {
       if (err) {
         console.error('Database error:', err);
@@ -144,7 +146,7 @@ const login = (req, res) => {
 
       // Generate JWT token
       const token = jwt.sign(
-        { userId: user.id, email: user.email },
+        { userId: user.id, email: user.email, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN }
       );
@@ -154,7 +156,8 @@ const login = (req, res) => {
         token,
         user: {
           id: user.id,
-          email: user.email
+          email: user.email,
+          role: user.role
         }
       });
     });
@@ -166,7 +169,7 @@ const login = (req, res) => {
 
 const getUsers = (req, res) => {
   try {
-    const getUsersQuery = 'SELECT id, email, is_verified, created_at FROM users';
+  const getUsersQuery = 'SELECT id, email, role, is_verified, created_at FROM users';
     
     db.query(getUsersQuery, (err, results) => {
       if (err) {

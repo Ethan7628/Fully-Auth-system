@@ -1,6 +1,6 @@
 const express = require('express');
 const { signup, verifyOTP, login, getUsers } = require('../controllers/authController');
-const { authenticateToken } = require('../middleware/authMiddleware');
+const { authenticateToken, authorizeRoles, authorizeSelf } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -8,11 +8,13 @@ const router = express.Router();
 router.post('/signup', signup);
 router.post('/verify-otp', verifyOTP);
 router.post('/login', login);
-router.get('/users', getUsers);
+// /users route: admin only
+router.get('/users', authenticateToken, authorizeRoles('admin'), getUsers);
 
 
 // Protected route example
-router.get('/profile', authenticateToken, (req, res) => {
+// /profile route: signed-in user only
+router.get('/profile', authenticateToken, authorizeSelf, (req, res) => {
   res.json({
     message: 'Protected route accessed successfully',
     user: req.user

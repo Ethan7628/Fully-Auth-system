@@ -39,6 +39,7 @@ registerForm.addEventListener('submit', async (e) => {
 
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
+    const role = document.getElementById('role').value;
     const messageEl = document.getElementById('registerMessage');
 
     try {
@@ -47,7 +48,7 @@ registerForm.addEventListener('submit', async (e) => {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password, role })
         });
 
         const data = await response.json();
@@ -117,11 +118,11 @@ verifyForm.addEventListener('submit', async (e) => {
         if (response.ok) {
             showMessage(messageEl, 'Login successful!', 'success');
             loginForm.reset();
-            // if JWT token is returned, store it
+            // if JWT token is returned, store it and show user info
             if (data.token) {
                 localStorage.setItem('authToken', data.token);
+                showUserInfo(data.user);
             }
-            
         } else {
             showMessage(messageEl, data.message || 'Login failed', 'error');
         }
@@ -137,14 +138,24 @@ async function loadUsers() {
     usersLoader.style.display = 'block';
     usersList.innerHTML = '';
 
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/users`); 
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+        usersList.innerHTML = '<p class="error">You must be logged in as admin to view users.</p>';
+        usersLoader.style.display = 'none';
+        return;
+    }
 
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/users`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (response.ok) {
             const users = await response.json();
             displayUsers(users);
         } else {
-            usersList.innerHTML = '<p class="error">Failed to load users</p>';
+            usersList.innerHTML = '<p class="error">Failed to load users. Only admin can view users.</p>';
         }
     } catch (error) {
         usersList.innerHTML = '<p class="error">Network error. Please try again.</p>';
@@ -165,8 +176,72 @@ function displayUsers(users) {
         userEl.className = 'user-item';
 
         userEl.innerHTML = `
+            <div class="user-info">
+                <span class="user-email">${user.email}</span>
+                <span class="user-role">Role: <b>${user.role}</b></span>
+                <span class="user-status ${user.is_verified ? 'verified' : 'not-verified'}">
+                    ${user.is_verified ? 'Verified' : 'Not Verified'}
+                </span>
+            </div>
+            <div class="user-actions">
+                <small>Joined: ${new Date(user.created_at).toLocaleDateString()}</small>
+            </div>
+        `;
+
+        usersList.appendChild(userEl);
+    });
+}
+
+function showUserInfo(user) {
+    const userInfoDiv = document.getElementById('userInfo');
+    if (userInfoDiv) {
+        userInfoDiv.innerHTML = `<div class="user-info-panel">
+            <strong>Logged in as:</strong> ${user.email}<br>
+            <strong>Role:</strong> ${user.role}
+        </div>`;
+    }
+    showDashboard(user);
+}
+
+function showDashboard(user) {
+    // Hide tabs and tab contents
+    document.getElementById('mainTabs').style.display = 'none';
+    tabContents.forEach(content => content.style.display = 'none');
+    // Show dashboard
+    const dashboard = document.getElementById('dashboard');
+    dashboard.style.display = 'block';
+    if (user.role === 'admin') {
+        dashboard.innerHTML = `<div class="card"><h2>Admin Dashboard</h2><p>All registered users:</p><div id="adminUsersList"></div></div>`;
+        loadAdminUsers();
+    } else {
+        dashboard.innerHTML = `<div class="card"><h2>Staf Dashboard</h2><p>Hello users!</p></div>`;
+    }
+}
+
+async function loadAdminUsers() {
+    const token = localStorage.getItem('authToken');
+    const adminUsersList = document.getElementById('adminUsersList');
+    if (!token) {
+        adminUsersList.innerHTML = '<p class="error">You must be logged in as admin to view users.</p>';
+        return;
+    }
+    adminUsersList.innerHTML = '<div class="loader-spinner"></div><p>Loading users...</p>';
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/users`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (response.ok) {
+            const users = await response.json();
+            adminUsersList.innerHTML = '';
+            users.forEach(user => {
+                const userEl = document.createElement('div');
+                userEl.className = 'user-item';
+                userEl.innerHTML = `
                     <div class="user-info">
                         <span class="user-email">${user.email}</span>
+                        <span class="user-role">Role: <b>${user.role}</b></span>
                         <span class="user-status ${user.is_verified ? 'verified' : 'not-verified'}">
                             ${user.is_verified ? 'Verified' : 'Not Verified'}
                         </span>
@@ -175,9 +250,14 @@ function displayUsers(users) {
                         <small>Joined: ${new Date(user.created_at).toLocaleDateString()}</small>
                     </div>
                 `;
-
-        usersList.appendChild(userEl);
-    });
+                adminUsersList.appendChild(userEl);
+            });
+        } else {
+            adminUsersList.innerHTML = '<p class="error">Failed to load users. Only admin can view users.</p>';
+        }
+    } catch (error) {
+        adminUsersList.innerHTML = '<p class="error">Network error. Please try again.</p>';
+    }
 }
 
 function showMessage(element, message, type) {

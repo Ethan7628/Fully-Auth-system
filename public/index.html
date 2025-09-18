@@ -8,19 +8,22 @@
 </head>
 <body>
     <div class="container">
-        <header>
+         <header>
             <h1>User Authentication System</h1>
             <p class="subtitle">Register, verify, and manage your users</p>
         </header>
+
+        <div id="dashboard" style="display:none;"></div>
+       
         
-        <div class="tabs">
+        <div class="tabs" id="mainTabs">
             <div class="tab active" data-tab="register">Register</div>
             <div class="tab" data-tab="verify">Verify OTP</div>
             <div class="tab" data-tab="login">Login</div>
-            <div class="tab" data-tab="users">Users</div>
+        
         </div>
         
-        <!-- Registration Form -->
+    
         <div class="tab-content active" id="register-tab">
             <div class="card">
                 <div class="card-header">
@@ -35,13 +38,20 @@
                         <label for="password">Password</label>
                         <input type="password" id="password" placeholder="Create a password" required>
                     </div>
+                    <div class="form-group">
+                        <label for="role">Role</label>
+                        <select id="role">
+                            <option value="staf">Staf</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
                     <button type="submit" class="btn-primary">Sign Up</button>
                 </form>
                 <div id="registerMessage" class="message"></div>
             </div>
         </div>
         
-        <!-- Verify OTP Form -->
+        <!-- Verify -->
         <div class="tab-content" id="verify-tab">
             <div class="card">
                 <div class="card-header">
@@ -61,8 +71,7 @@
                 <div id="verifyMessage" class="message"></div>
             </div>
         </div>
-        
-        <!-- Login Form -->
+   
         <div class="tab-content" id="login-tab">
             <div class="card">
                 <div class="card-header">
@@ -80,10 +89,10 @@
                     <button type="submit" class="btn-primary">Login</button>
                 </form>
                 <div id="loginMessage" class="message"></div>
+                <div id="userInfo" style="margin-top:20px;"></div>
             </div>
         </div>
         
-        <!-- User List -->
         <div class="tab-content" id="users-tab">
             <div class="card">
                 <div class="card-header">
