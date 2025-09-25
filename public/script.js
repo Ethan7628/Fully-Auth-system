@@ -6,6 +6,18 @@ const loginForm = document.getElementById('loginForm');
 const loadUsersBtn = document.getElementById('loadUsers');
 const usersList = document.getElementById('usersList');
 const usersLoader = document.getElementById('usersLoader');
+// Profile elements
+const profileForm = document.getElementById('profileForm');
+const profileFullName = document.getElementById('profileFullName');
+const profilePhone = document.getElementById('profilePhone');
+const profileBio = document.getElementById('profileBio');
+const profileStatus = document.getElementById('profileStatus');
+const profileMessage = document.getElementById('profileMessage');
+const profilePicturePreview = document.getElementById('profilePicturePreview');
+const profilePictureForm = document.getElementById('profilePictureForm');
+const profilePictureInput = document.getElementById('profilePictureInput');
+const deleteProfilePictureBtn = document.getElementById('deleteProfilePicture');
+const profilePictureMessage = document.getElementById('profilePictureMessage');
 
 //tab switching
 tabs.forEach(tab => {
@@ -27,6 +39,10 @@ tabs.forEach(tab => {
         if (tabId === 'users') {
             loadUsers();
         }
+        // load profile
+        if (tabId === 'profile') {
+            loadProfile();
+        }
     });
 });
 
@@ -40,15 +56,24 @@ registerForm.addEventListener('submit', async (e) => {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const role = document.getElementById('role').value;
+    const profilePicture = document.getElementById('registerProfilePicture').files[0];
     const messageEl = document.getElementById('registerMessage');
+
+    if (!profilePicture) {
+        showMessage(messageEl, 'Profile picture is required.', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('role', role);
+    formData.append('profile_picture', profilePicture);
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password, role })
+            body: formData
         });
 
         const data = await response.json();
@@ -200,7 +225,35 @@ function showUserInfo(user) {
             <strong>Role:</strong> ${user.role}
         </div>`;
     }
-    showDashboard(user);
+    showProfileAfterLogin(user);
+}
+
+function showProfileAfterLogin(user) {
+    // Hide all tabs and dashboard
+    document.getElementById('mainTabs').style.display = 'none';
+    tabContents.forEach(content => content.style.display = 'none');
+    document.getElementById('dashboard').style.display = 'none';
+    // Show profile tab
+    document.getElementById('profile-tab').style.display = 'block';
+    loadProfile();
+    // If admin, show all users below profile
+    if (user.role === 'admin') {
+        // Add a section for all users below the profile card
+        let adminUsersSection = document.getElementById('adminUsersSection');
+        if (!adminUsersSection) {
+            adminUsersSection = document.createElement('div');
+            adminUsersSection.id = 'adminUsersSection';
+            adminUsersSection.innerHTML = `<div class="card" style="margin-top:30px;"><h2>All Users</h2><div id="adminUsersList"></div></div>`;
+            document.getElementById('profile-tab').appendChild(adminUsersSection);
+        } else {
+            adminUsersSection.style.display = 'block';
+        }
+        loadAdminUsers();
+    } else {
+        // Hide admin users section if exists
+        const adminUsersSection = document.getElementById('adminUsersSection');
+        if (adminUsersSection) adminUsersSection.style.display = 'none';
+    }
 }
 
 function showDashboard(user) {
@@ -211,11 +264,135 @@ function showDashboard(user) {
     const dashboard = document.getElementById('dashboard');
     dashboard.style.display = 'block';
     if (user.role === 'admin') {
-        dashboard.innerHTML = `<div class="card"><h2>Admin Dashboard</h2><p>All registered users:</p><div id="adminUsersList"></div></div>`;
+        dashboard.innerHTML = `<div class="card"><h2>Admin Dashboard</h2><p>All registered users:</p><div id="adminUsersList"></div><button id="openProfileBtn" class="btn-secondary" style="margin-top:15px;">My Profile</button></div>`;
         loadAdminUsers();
+        setTimeout(() => {
+            const openProfileBtn = document.getElementById('openProfileBtn');
+            if (openProfileBtn) {
+                openProfileBtn.onclick = () => showProfileTab();
+            }
+        }, 100);
     } else {
-        dashboard.innerHTML = `<div class="card"><h2>Staf Dashboard</h2><p>Hello users!</p></div>`;
+        dashboard.innerHTML = `<div class="card"><h2>Staf Dashboard</h2><p>Hello users!</p><button id="openProfileBtn" class="btn-secondary" style="margin-top:15px;">My Profile</button></div>`;
+        setTimeout(() => {
+            const openProfileBtn = document.getElementById('openProfileBtn');
+            if (openProfileBtn) {
+                openProfileBtn.onclick = () => showProfileTab();
+            }
+        }, 100);
     }
+}
+
+function showProfileTab() {
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('profile-tab').style.display = 'block';
+    loadProfile();
+}
+
+async function loadProfile() {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            const p = data.profile;
+            profileFullName.value = p.full_name || '';
+            profilePhone.value = p.phone_number || '';
+            profileBio.value = p.bio || '';
+            profileStatus.value = p.status || 'offline';
+            profilePicturePreview.src = p.profile_picture || 'https://via.placeholder.com/100x100?text=No+Image';
+        }
+    } catch (error) {
+        // ignore
+    }
+}
+
+if (profileForm) {
+    profileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+        const body = {
+            full_name: profileFullName.value,
+            phone_number: profilePhone.value,
+            bio: profileBio.value,
+            status: profileStatus.value
+        };
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(body)
+            });
+            const data = await response.json();
+            if (data.success) {
+                showMessage(profileMessage, 'Profile updated!', 'success');
+            } else {
+                showMessage(profileMessage, data.message || 'Update failed', 'error');
+            }
+        } catch (error) {
+            showMessage(profileMessage, 'Network error', 'error');
+        }
+    });
+}
+
+if (profilePictureForm) {
+    profilePictureForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+        const file = profilePictureInput.files[0];
+        if (!file) {
+            showMessage(profilePictureMessage, 'No file selected', 'error');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('profile_picture', file);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/profile/picture`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            const data = await response.json();
+            if (data.success) {
+                profilePicturePreview.src = data.profile_picture;
+                showMessage(profilePictureMessage, 'Profile picture updated!', 'success');
+            } else {
+                showMessage(profilePictureMessage, data.message || 'Upload failed', 'error');
+            }
+        } catch (error) {
+            showMessage(profilePictureMessage, 'Network error', 'error');
+        }
+    });
+}
+
+if (deleteProfilePictureBtn) {
+    deleteProfilePictureBtn.addEventListener('click', async () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/profile/picture`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                profilePicturePreview.src = 'https://via.placeholder.com/100x100?text=No+Image';
+                showMessage(profilePictureMessage, 'Profile picture deleted!', 'success');
+            } else {
+                showMessage(profilePictureMessage, data.message || 'Delete failed', 'error');
+            }
+        } catch (error) {
+            showMessage(profilePictureMessage, 'Network error', 'error');
+        }
+    });
 }
 
 async function loadAdminUsers() {

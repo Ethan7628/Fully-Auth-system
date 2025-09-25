@@ -1,11 +1,13 @@
 const express = require('express');
+
 const { signup, verifyOTP, login, getUsers } = require('../controllers/authController');
 const { authenticateToken, authorizeRoles, authorizeSelf } = require('../middleware/authMiddleware');
+const { uploadForRegister } = require('../middleware/uploadMiddleware');
 
 const router = express.Router();
 
 // Public routes
-router.post('/signup', signup);
+router.post('/signup', uploadForRegister.single('profile_picture'), signup);
 router.post('/verify-otp', verifyOTP);
 router.post('/login', login);
 // /users route: admin only

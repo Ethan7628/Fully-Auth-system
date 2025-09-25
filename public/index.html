@@ -14,6 +14,50 @@
         </header>
 
         <div id="dashboard" style="display:none;"></div>
+
+        <!-- Profile Tab -->
+        <div class="tab-content" id="profile-tab" style="display:none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">My Profile</h2>
+                </div>
+                <form id="profileForm">
+                    <div class="form-group">
+                        <label for="profileFullName">Full Name</label>
+                        <input type="text" id="profileFullName" placeholder="Your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="profilePhone">Phone Number</label>
+                        <input type="text" id="profilePhone" placeholder="Your phone number">
+                    </div>
+                    <div class="form-group">
+                        <label for="profileBio">Bio</label>
+                        <textarea id="profileBio" placeholder="Tell us about yourself"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="profileStatus">Status</label>
+                        <select id="profileStatus">
+                            <option value="online">Online</option>
+                            <option value="offline">Offline</option>
+                            <option value="away">Away</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-primary">Update Profile</button>
+                </form>
+                <div id="profileMessage" class="message"></div>
+                <hr>
+                <div>
+                    <h3>Profile Picture</h3>
+                    <img id="profilePicturePreview" src="" alt="Profile Picture" style="width:100px;height:100px;border-radius:50%;object-fit:cover;">
+                    <form id="profilePictureForm" enctype="multipart/form-data">
+                        <input type="file" id="profilePictureInput" accept="image/*">
+                        <button type="submit" class="btn-secondary">Upload Picture</button>
+                        <button type="button" id="deleteProfilePicture" class="btn-danger">Delete Picture</button>
+                    </form>
+                    <div id="profilePictureMessage" class="message"></div>
+                </div>
+            </div>
+        </div>
        
         
         <div class="tabs" id="mainTabs">
@@ -29,7 +73,7 @@
                 <div class="card-header">
                     <h2 class="card-title">Register New User</h2>
                 </div>
-                <form id="registerForm">
+                <form id="registerForm" enctype="multipart/form-data">
                     <div class="form-group">
                         <label for="email">Email Address</label>
                         <input type="email" id="email" placeholder="Enter your email" required>
@@ -44,6 +88,10 @@
                             <option value="staf">Staf</option>
                             <option value="admin">Admin</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerProfilePicture">Profile Picture</label>
+                        <input type="file" id="registerProfilePicture" accept="image/*" required>
                     </div>
                     <button type="submit" class="btn-primary">Sign Up</button>
                 </form>

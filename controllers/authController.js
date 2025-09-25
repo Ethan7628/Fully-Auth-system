@@ -3,20 +3,23 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const { sendOTPEmail } = require('../utils/emailService');
 
-// Generate OTP
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Signup endpoint
+const sharp = require('sharp');
+const path = require('path');
+const fs = require('fs');
+
 const signup = async (req, res) => {
   try {
-  const { email, password, role } = req.body;
-
+    const { email, password, role } = req.body;
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
-    // Default role to 'staf' if not provided or invalid
+    if (!req.file) {
+      return res.status(400).json({ message: 'Profile picture is required' });
+    }
     const userRole = (role === 'admin' || role === 'staf') ? role : 'staf';
 
     const checkEmailQuery = 'SELECT id FROM users WHERE email = ?';
@@ -25,27 +28,40 @@ const signup = async (req, res) => {
         console.error('Database error:', err);
         return res.status(500).json({ message: 'Internal server error' });
       }
-
       if (results.length > 0) {
+        // Delete uploaded file if email exists
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
         return res.status(400).json({ message: 'Email already exists' });
       }
 
-      // Hashing user password
       const hashedPassword = await bcrypt.hash(password, 12);
       const otp = generateOTP();
 
-      // Inserting new users
+      // Process image with sharp
+      const processedFileName = `processed-${req.file.filename}`;
+      const processedFilePath = path.join(path.dirname(req.file.path), processedFileName);
+      try {
+        await sharp(req.file.path)
+          .resize(300, 300)
+          .jpeg({ quality: 80 })
+          .toFile(processedFilePath);
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(500).json({ message: 'Error processing image' });
+      }
+
       const insertQuery = `
-        INSERT INTO users (email, password, role, otp, is_verified) 
-        VALUES (?, ?, ?, ?, FALSE)
+        INSERT INTO users (email, password, role, otp, is_verified, profile_picture) 
+        VALUES (?, ?, ?, ?, FALSE, ?)
       `;
 
-      db.query(insertQuery, [email, hashedPassword, userRole, otp], async (err, results) => {
+      db.query(insertQuery, [email, hashedPassword, userRole, otp, processedFilePath], async (err, results) => {
         if (err) {
+          if (fs.existsSync(processedFilePath)) fs.unlinkSync(processedFilePath);
           console.error('Database error:', err);
           return res.status(500).json({ message: 'Internal server error' });
         }
-
         try {
           await sendOTPEmail(email, otp);
           res.status(201).json({ 
@@ -54,7 +70,6 @@ const signup = async (req, res) => {
           });
         } catch (emailError) {
           console.error('Email error:', emailError);
-          
           res.status(201).json({ 
             message: 'User created but failed to send OTP email',
             userId: results.insertId,
@@ -95,7 +110,7 @@ const verifyOTP = (req, res) => {
         return res.status(400).json({ message: 'Invalid OTP' });
       }
 
-      // Updates user as verified
+      // Updates user verfication status and clear OTP
       const updateQuery = 'UPDATE users SET is_verified = TRUE, otp = NULL WHERE email = ?';
       db.query(updateQuery, [email], (err) => {
         if (err) {
@@ -144,7 +159,7 @@ const login = (req, res) => {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
-      // Generate JWT token
+      // Generating JWT token
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
         process.env.JWT_SECRET,
